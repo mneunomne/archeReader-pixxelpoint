@@ -46,7 +46,7 @@ class ArcheReader:
 
     # load templates
     self.templates = load_templates(FOLDER_PATH)
-    
+        
     self.save_frames = args.save_frames
     self.adaptiveThreshWinSizeMin = aruco_defaults["adaptiveThreshWinSizeMin"]
     self.adaptiveThreshWinSizeMax = aruco_defaults["adaptiveThreshWinSizeMax"]
@@ -248,12 +248,14 @@ class ArcheReader:
     # rotate 90 degrees
     _w = SEGMENT_OUTPUT_WIDTH
     _h = SEGMENT_OUTPUT_HEIGHT
-    padding = 35
-    padding_x = padding + 10
-    padding_y = padding + 2
+    #padding = 35
+    padding_right = 22
+    padding_left = 30
+    padding_top = 55
+    padding_bottom = 0
     # Calculate the dimensions of each segment
-    segment_width = (_w - padding_x * 2) // INNER_COLS
-    segment_height = ((_h - padding_y * 2)  // INNER_ROWS)
+    segment_width = (_w - (padding_right + padding_left)) // INNER_COLS
+    segment_height = ((_h - (padding_top + padding_bottom))  // INNER_ROWS)
     
     #gray_image = cv2.cvtColor(roi_cropped, cv2.COLOR_BGR2GRAY)
 
@@ -273,14 +275,24 @@ class ArcheReader:
     roi_cropped = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
     
     segment_data = []
+    index = 0
     # Loop through the grid and extract each segment
-    for i in range(INNER_ROWS):
-      for j in range(INNER_COLS):
+    for j in range(INNER_COLS):
+      for i in range(INNER_ROWS):
+        if i < 2 and j < 2:
+          continue
+        if i < 2 and j > INNER_COLS - 3:
+          continue
+        if i > INNER_ROWS - 3 and j < 2:
+          continue
+        if i > INNER_ROWS - 3 and j > INNER_COLS - 3:
+          continue
+   
         # Calculate the coordinates for the current segment
-        x_start = j * segment_width + padding_x
-        y_start = i * segment_height + padding_y + 0
-        x_end = (j + 1) * segment_width + padding_x
-        y_end = (i + 1) * segment_height + padding_y + 0
+        x_start = j * segment_width + padding_left
+        y_start = i * segment_height + padding_top + 0
+        x_end = (j + 1) * segment_width + padding_left
+        y_end = (i + 1) * segment_height + padding_top + 0
         segment_corners = np.array([[x_start, y_start], [x_end, y_start], [x_end, y_end], [x_start, y_end]], dtype='float32')
 
         # draw rect from segment_corners
@@ -305,9 +317,11 @@ class ArcheReader:
         # Perform template matching
         matched_template, matched_filename, percentage = template_matching(gray_segment, self.templates)
         matched_filename = matched_filename.split(".")[0]
-        matched_filename = matched_filename.split("_")[0]
+        # matched_filename = matched_filename.split("_")[0]
         roi_cropped = cv2.putText(roi_cropped, matched_filename, (x_start, y_start+20),  cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0) )
         roi_cropped = cv2.putText(roi_cropped, percentage, (x_start, y_start+40),  cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0) )
+        roi_cropped = cv2.putText(roi_cropped, str(index), (x_start, y_start+60),  cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0) )
+        index += 1
         
         # segment data
         data = {
@@ -318,11 +332,12 @@ class ArcheReader:
         }
         segment_data.append(data)
         # cv2.imshow(f'Segment ({i}, {j})', segment)
+    # invert data
     return segment_data, roi_cropped
   
   def decode_segment_data(self, segment_data):
     # read data from top to bottom and left to right
-    segment_data = sorted(segment_data, key=lambda x: (x["row"], x["col"]))
+    segment_data = sorted(segment_data, key=lambda x: (x["col"], x["row"]))
     s = ""
     for d in segment_data:
       if d["matched_filename"] == '10':
@@ -435,10 +450,10 @@ class ArcheReader:
         # gray_cropped = cv2.cvtColor(roi_cropped, cv2.COLOR_BGR2GRAY)
         
         segment_data = []
-
+        index = 0
         # Loop through the grid and extract each segment
-        for i in range(INNER_ROWS):
-            for j in range(INNER_COLS):
+        for j in range(INNER_COLS):
+          for i in range(INNER_ROWS):
                 # Calculate the coordinates for the current segment
                 x_start = j * segment_width + padding_x
                 y_start = i * segment_height + padding_y
@@ -465,6 +480,7 @@ class ArcheReader:
                 matched_template, matched_filename = template_matching(gray_segment, self.templates)
                 matched_filename = matched_filename.split(".")[0]
                 roi_cropped = cv2.putText(roi_cropped, matched_filename, (x_start, y_start+20),  cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0) )
+
                 
                 # segment data
                 data = {
@@ -472,6 +488,7 @@ class ArcheReader:
                     "row": i,
                     "col": j,
                 }
+                index += 1
                 segment_data.append(data)
                 
                 # Display the matched template

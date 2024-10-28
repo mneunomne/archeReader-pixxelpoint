@@ -66,6 +66,8 @@ class ImageProcessor:
         corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
                 
         is_valid, detections = self.validateMarkers(image, corners, ids, segmentIndex)
+        
+        raw_image = aruco.drawDetectedMarkers(raw_image, corners, ids)
 
         # store detections that are valid
         for index, id in enumerate(detections[1]):

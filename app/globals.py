@@ -12,36 +12,36 @@ FLASK_SERVER_IP = os.environ.get("FLASK_SERVER_IP")
 FLASK_SERVER_PORT = int(os.environ.get("FLASK_SERVER_PORT"))
 
 # size of cropped images
-SEGMENT_WIDTH = 68
-SEGMENT_HEIGHT = 68
+SEGMENT_WIDTH = 100
+SEGMENT_HEIGHT = 100
 
 SEGMENT_OUTPUT_WIDTH = 700
-SEGMENT_OUTPUT_HEIGHT = 700
+SEGMENT_OUTPUT_HEIGHT = 800
 
-# ceramic data
+# ceramic data (ammount of fiducial markers) 
 COLS = 9
 ROWS = 11
 INNER_COLS = 7
-INNER_ROWS = 7
+INNER_ROWS = 8
 
 # detections attempts
 MAX_ATTEMPTS = 1000
 
 # paths
 FOLDER_PATH = 'app/numerals/'
-TEST_FILE = 'app/test_images/teste11.png'
+TEST_FILE = 'app/test_images/pixxel_test_0.png'
 
 # aruco marker settings
 aruco_defaults = {
   "adaptiveThreshWinSizeMin": 3,
   "adaptiveThreshWinSizeMax": 25,
   "adaptiveThreshWinSizeStep": 3,
-  "adaptiveThreshConstant": 3,
-  "minMarkerPerimeterRate": 160,
+  "adaptiveThreshConstant": 2,
+  "minMarkerPerimeterRate": 224,
   "maxMarkerPerimeterRate": 69,
-  "polygonalApproxAccuracyRate": 50,
-  "cornerRefinementWinSize": 5,
-  "cornerRefinementMaxIterations": 30,
+  "polygonalApproxAccuracyRate": 69,
+  "cornerRefinementWinSize": 17,
+  "cornerRefinementMaxIterations": 24,
   "minDistanceToBorder": 1,
   "minOtsuStdDev": 5,
   "perspectiveRemovePixelPerCell": 8,
