@@ -24,6 +24,9 @@ ROWS = 11
 INNER_COLS = 7
 INNER_ROWS = 7
 
+# detections attempts
+MAX_ATTEMPTS = 1000
+
 # paths
 FOLDER_PATH = 'app/numerals/'
 TEST_FILE = 'app/test_images/teste11.png'

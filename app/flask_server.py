@@ -3,7 +3,7 @@ from flask import Flask, render_template, Response
 from image_processing import ImageProcessor
 import numpy as np
 import cv2
-from globals import SEGMENT_OUTPUT_WIDTH, SEGMENT_OUTPUT_HEIGHT, FLASK_SERVER_IP, FLASK_SERVER_PORT
+from globals import SEGMENT_OUTPUT_WIDTH, SEGMENT_OUTPUT_HEIGHT, FLASK_SERVER_IP, FLASK_SERVER_PORT, MAX_ATTEMPTS
 
 app = Flask(__name__, static_url_path='', static_folder='static', template_folder='static')
 
@@ -87,12 +87,12 @@ def on_segment(segmentIndex):
         imageProcessor.clear_stored_markers()
         is_valid = False
         attempts = 0
-        while not is_valid and attempts < 1000:
+        while not is_valid and attempts < MAX_ATTEMPTS:
             attempts = attempts + 1
             is_valid, msg = imageProcessor.process_image(video_output, segmentIndex)
             print('is_valid', is_valid, attempts)
             if is_valid: 
-                attempts = 500
+                attempts = MAX_ATTEMPTS
         if is_valid:
             print('is_valid', is_valid)
             return Response(msg, mimetype='text/plain')
