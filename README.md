@@ -1,6 +1,8 @@
 # ARCHE-READING v3
 
-Voltaje festival iteration.
+PixxelPoint festival iteration.
+
+10/2024
 
 ## commands 
 

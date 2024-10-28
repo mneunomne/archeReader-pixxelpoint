@@ -87,10 +87,10 @@ def on_segment(segmentIndex):
         imageProcessor.clear_stored_markers()
         is_valid = False
         attempts = 0
-        while not is_valid and attempts < 500:
+        while not is_valid and attempts < 1000:
             attempts = attempts + 1
             is_valid, msg = imageProcessor.process_image(video_output, segmentIndex)
-            # print('is_valid', is_valid, attempts)
+            print('is_valid', is_valid, attempts)
             if is_valid: 
                 attempts = 500
         if is_valid:

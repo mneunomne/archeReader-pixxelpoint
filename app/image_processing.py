@@ -84,8 +84,9 @@ class ImageProcessor:
         if set(ids_np) == set([segmentIndex, segmentIndex + 1, segmentIndex + COLS, segmentIndex + COLS + 1]):
             is_valid = True
         
-        # if stored detection doesnt have specific detection id, add it
+        print("stored_detections", self.storedDetections)
         
+        # if stored detection doesnt have specific detection id, add it
         message = self.archeReader.set_detections((self.storedDetections[0], ids_np), raw_image, is_valid)
         return is_valid, message
             
@@ -103,6 +104,8 @@ class ImageProcessor:
 
         # find if ids contains top_left, top_right, bottom_left, bottom_right
         corner_ids = [top_left, top_right, bottom_left, bottom_right]
+        
+        print("corner_ids", corner_ids, segmentIndex, ids)
 
         for index, id in enumerate(ids):
             if id in corner_ids:
@@ -112,6 +115,9 @@ class ImageProcessor:
                 corner_ids.remove(id)
         
         validated_ids = np.array(validated_ids, int)  # Convert to numpy array
+        
+        print("validated_ids", validated_ids)
+
 
         if len(corner_ids) > 0:
             return False, (validated_markers, validated_ids)

@@ -11,6 +11,7 @@ def connectSocket(server_path):
         is_connected = False
         print("Error on socket connection")
     else:
+        print("Connected to Socket")
         is_connected = True
 
 def sendData(segmentData):
