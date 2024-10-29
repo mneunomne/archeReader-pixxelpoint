@@ -1,0 +1,31 @@
+{
+	"folders": [
+		{
+			"name": "archeReader-voltaje",
+			"path": "../../../../archeReader-voltaje"
+		},
+		{
+			"name": "archeReaderController-voltaje",
+			"path": "../../../../archeReaderController-voltaje"
+		},
+		{
+			"name": "archeReader-pixxelpoint",
+			"path": "../../.."
+		},
+		{
+			"path": "../../../../pandemic-archive-of-voices-DB"
+		},
+		{
+			"path": "../../../../archeReaderController_pixxelpoint"
+		},
+		{
+			"path": "../../../../landscripts-map"
+		},
+		{
+			"path": "../../../../landscripts"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "archeReader-pixxelpoint"
+	}
+}

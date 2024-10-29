@@ -250,9 +250,9 @@ class ArcheReader:
     _h = SEGMENT_OUTPUT_HEIGHT
     #padding = 35
     padding_right = 22
-    padding_left = 30
-    padding_top = 55
-    padding_bottom = 0
+    padding_left = 25
+    padding_top = 25
+    padding_bottom = 25
     # Calculate the dimensions of each segment
     segment_width = (_w - (padding_right + padding_left)) // INNER_COLS
     segment_height = ((_h - (padding_top + padding_bottom))  // INNER_ROWS)
@@ -311,13 +311,13 @@ class ArcheReader:
         gray_segment = cv2.cvtColor(segment, cv2.COLOR_BGR2GRAY)
         
         # improve contrast
-        #gray_segment = cv2.equalizeHist(gray_segment)
+        # gray_segment = cv2.equalizeHist(gray_segment)
         
                 
         # Perform template matching
         matched_template, matched_filename, percentage = template_matching(gray_segment, self.templates)
         matched_filename = matched_filename.split(".")[0]
-        # matched_filename = matched_filename.split("_")[0]
+        matched_filename = matched_filename.split("_")[0]
         roi_cropped = cv2.putText(roi_cropped, matched_filename, (x_start, y_start+20),  cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0) )
         roi_cropped = cv2.putText(roi_cropped, percentage, (x_start, y_start+40),  cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0) )
         roi_cropped = cv2.putText(roi_cropped, str(index), (x_start, y_start+60),  cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0) )
@@ -479,6 +479,8 @@ class ArcheReader:
                 # Perform template matching
                 matched_template, matched_filename = template_matching(gray_segment, self.templates)
                 matched_filename = matched_filename.split(".")[0]
+                matched_filename = matched_filename.split("_")[0]
+                print("matched_filename", matched_filename)
                 roi_cropped = cv2.putText(roi_cropped, matched_filename, (x_start, y_start+20),  cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0) )
 
                 

@@ -19,16 +19,16 @@ SEGMENT_OUTPUT_WIDTH = 700
 SEGMENT_OUTPUT_HEIGHT = 800
 
 # ceramic data (ammount of fiducial markers) 
-COLS = 9
-ROWS = 11
+COLS = 10
+ROWS = 10
 INNER_COLS = 7
 INNER_ROWS = 8
 
 # detections attempts
-MAX_ATTEMPTS = 1000
+MAX_ATTEMPTS = 100
 
 # paths
-FOLDER_PATH = 'app/numerals/'
+FOLDER_PATH = 'app/numerals__old/'
 TEST_FILE = 'app/test_images/pixxel_test_0.png'
 
 # aruco marker settings

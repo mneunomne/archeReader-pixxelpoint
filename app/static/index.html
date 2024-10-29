@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=2.0">
+	<meta name="viewport" content="maximum-scale=1, user-scalable=no">
+	>
   <title>arche-scriptures</title>
 	<script src="./libs/jquery-3.7.1.min.js"></script>
 	<script src="stuquery.js"></script>
-	<script src="virtualsky.js" type="text/javascript"></script>
-	<script src="./js/dates.js" type="text/javascript"></script>
+	<script src="./js/border.js" type="text/javascript"></script>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyABc2FYPPzxrAMu_Atv1JQ5O_KrYBuXxQo"></script>
+
 	<style>
 		
 
@@ -21,10 +23,8 @@
 
 </head>
 <body>
-	<div class="sky-container">
-		<div id="skymap"></div>
-		<div id="skymap2"></div>
-	</div>
+	
+	<div id="map"></div>
 
 	<div id="characters"></div>
 

@@ -1,26 +1,25 @@
 
-var planetarium1;
-var planetarium2;
-var map;
-
-var timestamp
-
-var default_latlng = [4.6097, -74.0817]; // Bogotá
-
-var startDate = new Date("1994/12/27 00:21:00");
-
-var currentTime = startDate.getTime();
-var currentAz = 45;
-
 const messageContainer = document.getElementById('characters')
-const skyContainer = document.getElementById('skymap')
 
 const video_width = 800
 const video_height = 600
 
 const transition_duration = 4000
 
-var sky_height; 
+var map_height;
+
+var map;
+let isAnimating = false;
+let pathCoordinates = []; // Array to store the path coordinates
+let polyline; // Variable to hold the Polyline object
+
+
+var border_strings = border.map((item) => {
+	return (item.lat + '|' + item.lon).replace('.', '-')
+})
+
+var initial_pos = {lat: 45.95240469585346, lng: 13.634056757381002}
+
 
 window.onload = function() {
   setTimeout(() => {
@@ -35,89 +34,89 @@ const socket = new WebSocket(
   "ws://0.0.0.0:8025/arche-scriptures"
 );
 
-const data = dates.map((date) => {
-  var lat = date.lat.substring(0, 16).padEnd(16, 'X')
-  var lon = date.lon.substring(0, 16).padEnd(16, 'X')
-  var timestamp = (date.timestamp+'').substring(0, 18).padStart(18, 'X')
-  var az = date.az.substring(0, 3).padStart(3, 'X')
-  return `${lat}|${lon}|${timestamp}|${az}`
-})
+function initMap() {
+	// Define the bounds using the given lat/lng values
 
-// init socket io
-// var socket = io.connect('http://' + document.domain + ':' + location.port);
 
-const initPlanetarium = function (w, h) {
-  let d = new Date("October 25, 1985 12:00:00");
-  const options = {
-    id: 'skymap',
-    projection: 'stereo',
-    ra: -90,
-    dec: -5.3911111,
-    //'dec': -5.3911111,
-    latitude: default_latlng[0],
-    longitude: default_latlng[1],
-    showplanets: true,
-    transparent: true,
-    // showorbits: true,
-    az: currentAz,
-    // gridlines_az: true,
-    // gridlines_eq: true,
-    // gridlines_gal: false,
-    // meridian: true,
-    ground: true,
-    magnitude: 20,
-    meteorshowers: true,
-    showstarlabels: false,
-    scalestars: 2,
-    scaleplanets: 3,
-    width: w ,
-    height: sky_height + 1,// + 15,
-    //;keyboard: false, 
-    mouse: true,
-    constellations: true,
-    constellationlabels: true,
-    lang: 'es',
-    fontsize: '18px',
-    clock: startDate,
-    credit: false,
-  }
-  planetarium1 = S.virtualsky(options);
-  planetarium2 = S.virtualsky({
-    ...options,
-    showposition: false,
-    showplanets: false,
-    showdate: false,
-    id: 'skymap2',
-    constellationlabels: false,
-    showstarlabels: false,
-    height: window.innerHeight - sky_height
-  });
+	// Create a map centered within the bounds
+	map = new google.maps.Map(document.getElementById("map"), {			
+		center: initial_pos,
+		zoom: 16,
+		disableDefaultUI: true
+	});
 
-  //planetarium1.advanceTime(1, 100)
-  //planetarium2.advanceTime(1, 100)
-}
+	// Initialize the Polyline with an empty path
+	polyline = new google.maps.Polyline({
+		path: pathCoordinates,
+		geodesic: true,
+		strokeColor: '#0029FF',
+		strokeOpacity: 1,
+		strokeWeight: 2.2
+	});
 
-const initMap = function () {
-  // Initialize the map
-  map = L.map('map').setView(default_latlng, 13); // set the initial coordinates and zoom level
+	// Set satellite view
+	map.setMapTypeId('satellite');
 
-  // Add the OpenStreetMap layer
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
+	// set map height
+	let map_height = 1920 - video_height
+	console.log("map_height", window.innerHeight, map_height)
+	document.getElementById('map').style=`width: ${window.innerWidth}px; height: ${map_height}px;`
 
 }
 
-const updatePlanetariumTime = function (timestamp, az_step) {
-  planetarium1.setClock(timestamp)//.calendarUpdate()
-  planetarium1.changeAzimuth(az_step)
-  planetarium2.setClock(timestamp)//.calendarUpdate()
-  planetarium2.changeAzimuth(az_step)
+function updateBorderLine(position) {
+	const latLng = new google.maps.LatLng(position.lat, position.lon);
+
+	// Add the new position to the pathCoordinates array
+	pathCoordinates.push(latLng);
+
+	// Update the polyline path with the new coordinates
+	polyline.setPath(pathCoordinates);
+
+	// if coordinates are bigger than 100 remove the first one
+	if (pathCoordinates.length > 500) {
+		pathCoordinates.shift();
+	}
+
+	// Smoothly pan the map to the new position
+	smoothPanTo(position);
 }
 
-const updatePlanetariumAz = function (az_step) {
-  planetarium1.changeAzimuth(az_step)
-  planetarium2.changeAzimuth(az_step)
+function smoothPanTo(target) {
+	if (isAnimating) return;
+
+	const currentCenter = map.getCenter();
+	const startLat = currentCenter.lat();
+	const startLng = currentCenter.lng();
+	const endLat = target.lat;
+	const endLng = target.lon;
+	const duration = Math.random() * 10000 + 1000; // Duration of the animation in milliseconds
+	const frameRate = 24; // Frames per second
+	const totalFrames = Math.round((duration / 1000) * frameRate);
+	let currentFrame = 0;
+
+	isAnimating = true;
+
+	function animate() {
+		currentFrame++;
+		const progress = easeInOutQuad(currentFrame / totalFrames);
+		const lat = startLat + (endLat - startLat) * progress;
+		const lng = startLng + (endLng - startLng) * progress;
+		map.setCenter(new google.maps.LatLng(lat, lng));
+
+		if (currentFrame < totalFrames) {
+			requestAnimationFrame(animate);
+		} else {
+			isAnimating = false;
+		}
+	}
+
+	animate();
+}
+
+// Easing function for smooth animation
+function easeInOutQuad(t) {
+	return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
 const resizeVideo = function () {
@@ -127,10 +126,12 @@ const resizeVideo = function () {
   let h = w/ratio
   let h2 = window.innerHeight - h
 
-  sky_height = window.innerHeight - h
+  map_height = window.innerHeight - h
 
   document.getElementById('video').style=`width: ${w}px; height: ${h}px;`
   document.getElementById('video2').style=`width: ${w}px; height: ${h2}px;`
+
+	//document.getElementById('map').style=`width: ${w}px; height: ${h2}px;`
   
 }
 
@@ -138,8 +139,7 @@ S(document).ready(function () {
   let w = window.innerWidth;
   let h = window.innerHeight;
   resizeVideo();
-  initPlanetarium(w, h);
-  // initMap()
+  initMap()
 
   socket.onmessage = (event) => {
     console.log("onmessage", event.data);
@@ -155,9 +155,7 @@ S(document).ready(function () {
   // Update the position of the map and the planetarium
   document.addEventListener('keyup', function (event) {
     if (event.key == 't') {
-      //setRandomPosition()
-      // toggleAzimuthMove
-      let s = data[0].shuffle()
+      let s = border_strings[Math.floor(Math.random() * border_strings.length)]
       console.log("s", s)
       onSegmentData({data: s})
     }
@@ -214,72 +212,17 @@ S(document).ready(function () {
     return a.join("");
   }
 
-  const transitionPlanetarium = (data,  duration = 500) => {
-    var startTime = Date.now();
-    skyContainer.className = 'transition'
-    var az_diff = (data.az - currentAz)
-    //var total = 0
-    var lastEllapsed = Date.now() - startTime
-    // updateMapPosition(data.lat, data.lon);
-
-    function updateTransition () {
-      const elapsed = Date.now() - startTime;
-      var lastProg = (elapsed - lastEllapsed) / duration
-      var az = lastProg * az_diff
-      lastEllapsed = elapsed
-      
-      //total += az
-      const progress = Math.min(elapsed / duration, 1);
-  
-      const newTimestamp = startTime + progress * (data.timestamp - currentTime);
-      
-
-      // updatePlanetariumAz(az)
-      updatePlanetariumTime(new Date(newTimestamp), az);
-  
-      if (progress < 1) {
-        requestAnimationFrame(updateTransition);
-      } else {
-        currentTime = data.timestamp
-        currentAz = data.az
-        setTimeout(() => {
-          console.log("done!")
-          updatePlanetariumTime(new Date(data.timestamp), 0);
-          setTimeout(() => {
-            planetarium1.setClock(1).calendarUpdate()
-            skyContainer.className = ''
-          }, 50)
-        }, 1)
-      }
-    }
-    updateTransition();
-  };
-
-  // Cubic Bezier Easing Function
-  const cubicBezierEasing = (t) => {
-    // You can customize the cubic bezier values here
-    const p0 = 0;
-    const p1 = 0.42;
-    const p2 = 0.58;
-    const p3 = 1;
-
-    const t1 = 1 - t;
-    return 3 * t1 * t1 * t * p1 + 3 * t1 * t * t * p2 + t * t * t * p3;
-  };
-
-  // decode function
+	// decode function
   var decode = function (string) {
     var data = string.split("|").map((item) => {
       item = item.replace(/^(X+)/g, '')
-      item = item.replace('X', '.')
+      item = item.replace('-', '.')
       console.log("item", item)
       return parseFloat(item)
     })
     return {
       lat: validateLocation(data[0]),
-      lon: validateLocation(data[1]),
-      timestamp: validateTimestamp(data[2]),
-      az: validedAzimuth(data[3]),
+      lon: validateLocation(data[1])
     }
   }
 
@@ -300,21 +243,6 @@ S(document).ready(function () {
     return num
   }
 
-  var validateTimestamp = function (num){
-    console.log("validateTimestamp", num)
-    if (isNaN(num) || num == undefined || num == null) {
-      return 0
-    } 
-    return num
-  }
-
-  var validedAzimuth = function (num){
-    console.log("validedAzimuth", num)
-    if (isNaN(num) || num == undefined || num == null) {
-      return 0
-    }
-    return num % 360
-  }
 /*
   // add socket events
   socket.on('connect', function () {
@@ -338,9 +266,10 @@ S(document).ready(function () {
     console.log('string', string);
     var data = decode(string)
     console.log("decode data", data)
-    // updatePlanetarium(data.lat, data.lon, data.timestamp, data.az)
 
-    transitionPlanetarium(data, transition_duration)
+		updateBorderLine(data)
+
+    // transitionPlanetarium(data, transition_duration)
 
     hideMessage()
     setTimeout(() => {
@@ -350,7 +279,6 @@ S(document).ready(function () {
 
   const displayMessage = function (msg) {
     msg.split('').map((char, index) => {
-      if (char == '0') char = '20'
       if (char == '.') char = '-'
       const img = document.createElement('img')
       img.src='templates/' + char + '.svg'
@@ -372,7 +300,6 @@ S(document).ready(function () {
     setTimeout(() => {
       messageContainer.innerHTML = ''
     }, 1500)
-    /*messageContainer.innerHTML = ''*/
   }
   /*
   // clear message
