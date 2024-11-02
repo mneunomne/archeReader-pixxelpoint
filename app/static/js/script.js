@@ -51,11 +51,14 @@ function initMap() {
 		geodesic: true,
 		strokeColor: '#0029FF',
 		strokeOpacity: 1,
-		strokeWeight: 2.2
+		strokeWeight: 4
 	});
 
 	// Set satellite view
 	map.setMapTypeId('satellite');
+
+	// Add the polyline to the map
+	polyline.setMap(map);
 
 	// set map height
 	let map_height = 1920 - video_height
