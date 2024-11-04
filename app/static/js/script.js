@@ -42,7 +42,8 @@ function initMap() {
 	map = new google.maps.Map(document.getElementById("map"), {			
 		center: initial_pos,
 		zoom: 15,
-		disableDefaultUI: true
+		disableDefaultUI: true,
+		tilt: 0
 	});
 
 	// Initialize the Polyline with an empty path
@@ -51,7 +52,7 @@ function initMap() {
 		geodesic: true,
 		strokeColor: '#0029FF',
 		strokeOpacity: 1,
-		strokeWeight: 4
+		strokeWeight: 10
 	});
 
 	// Set satellite view
@@ -78,11 +79,57 @@ function initMap() {
 
 }
 
+var curPointIndex = 0;
+
+var numAttempts = 100;
+
+function setPathPoint(position, index, attempt) {
+	attempt++;
+	//const latLng = new google.maps.LatLng(position.lat, position.lon);
+	var latstr = position.lat.toString();
+	var lonstr = position.lon.toString();
+
+	let scale = 10 / Math.pow(2, (attempt));
+	console.log("scale", scale)
+
+	// make pos attempt/latstr random
+	latstr = (position.lat + (Math.random()-0.5) * scale).toString();
+	lonstr = (position.lon + (Math.random()-0.5) * scale).toString();
+
+	var lat = parseFloat(latstr);
+	var lon = parseFloat(lonstr);
+
+	var latLng = new google.maps.LatLng(lat, lon);
+
+	
+	pathCoordinates[index] = latLng;
+
+	// Add the new position to the pathCoordinates array
+	//pathCoordinates[pathCoordinates.length] = latLng;
+	//curPointIndex = pathCoordinates.length - 1;
+
+	// Update the polyline path with the new coordinates
+	polyline.setPath(pathCoordinates);
+
+	console.log("attempt", attempt);
+
+	if (attempt < numAttempts) {
+		setTimeout(() => {
+			setPathPoint(position, index, attempt);
+		}, 5000/numAttempts);
+		} else {
+		return;
+	}
+}
+
 function updateBorderLine(position) {
+	setPathPoint(position, pathCoordinates.length, 0);
+	return;
 	const latLng = new google.maps.LatLng(position.lat, position.lon);
 
 	// Add the new position to the pathCoordinates array
-	pathCoordinates.push(latLng);
+	pathCoordinates[pathCoordinates.length] = latLng;
+	//curPointIndex = pathCoordinates.length;
 
 	// Update the polyline path with the new coordinates
 	polyline.setPath(pathCoordinates);
@@ -93,7 +140,7 @@ function updateBorderLine(position) {
 	}
 
 	// Smoothly pan the map to the new position
-	smoothPanTo(position);
+	//smoothPanTo(position);
 }
 
 function smoothPanTo(target) {
@@ -166,8 +213,19 @@ S(document).ready(function () {
     }
   };
 
+	var key_index = 0;
+
   // Update the position of the map and the planetarium
   document.addEventListener('keyup', function (event) {
+    if (event.key == 'i') {
+      let s = border_strings[key_index]
+			key_index++;
+			if (key_index >= border_strings.length) {
+				key_index = 0;
+			}
+      console.log("s", s)
+      onSegmentData({data: s})
+    }
     if (event.key == 't') {
       let s = border_strings[Math.floor(Math.random() * border_strings.length)]
       console.log("s", s)
@@ -283,7 +341,7 @@ S(document).ready(function () {
 
 		updateBorderLine(data)
 
-    // transitionPlanetarium(data, transition_duration)
+    // t;ransitionPlanetarium(data, transition_duration)
 
     hideMessage()
     setTimeout(() => {
