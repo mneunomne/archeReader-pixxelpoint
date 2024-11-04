@@ -41,7 +41,7 @@ function initMap() {
 	// Create a map centered within the bounds
 	map = new google.maps.Map(document.getElementById("map"), {			
 		center: initial_pos,
-		zoom: 16,
+		zoom: 15,
 		disableDefaultUI: true
 	});
 
@@ -56,6 +56,17 @@ function initMap() {
 
 	// Set satellite view
 	map.setMapTypeId('satellite');
+
+	const imageBounds = {
+		north:  45.976872,  // maxLat
+		south:  45.900527,  // minLat
+		east:  13.685776,   // maxLng
+		west:  13.575996    // minLng
+	};
+
+
+	const overlay = new google.maps.GroundOverlay('img/nova_gorica-8_2023.jpg', imageBounds);
+	overlay.setMap(map);
 
 	// Add the polyline to the map
 	polyline.setMap(map);
