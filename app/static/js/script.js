@@ -89,8 +89,8 @@ function setPathPoint(position, index, attempt) {
 	var latstr = position.lat.toString();
 	var lonstr = position.lon.toString();
 
-	let scale = 10 / Math.pow(2, (attempt));
-	console.log("scale", scale)
+	let scale = 100 / Math.pow(2, (attempt));
+	// console.log("scale", scale)
 
 	// make pos attempt/latstr random
 	latstr = (position.lat + (Math.random()-0.5) * scale).toString();
