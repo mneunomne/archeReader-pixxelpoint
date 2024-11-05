@@ -9,9 +9,10 @@ const transition_duration = 4000
 var map_height;
 
 var map;
-let isAnimating = false;
-let pathCoordinates = []; // Array to store the path coordinates
-let polyline; // Variable to hold the Polyline object
+var isAnimating = false;
+
+var borderSections = [];
+var latestBorderSection = null;
 
 
 var border_strings = border.map((item) => {
@@ -46,15 +47,6 @@ function initMap() {
 		tilt: 0
 	});
 
-	// Initialize the Polyline with an empty path
-	polyline = new google.maps.Polyline({
-		path: pathCoordinates,
-		geodesic: true,
-		strokeColor: '#0029FF',
-		strokeOpacity: 1,
-		strokeWeight: 10
-	});
-
 	// Set satellite view
 	map.setMapTypeId('satellite');
 
@@ -66,11 +58,8 @@ function initMap() {
 	};
 
 
-	const overlay = new google.maps.GroundOverlay('img/nova_gorica-8_2023.jpg', imageBounds);
+	const overlay = new google.maps.GroundOverlay('img/nova_gorica-8_2023_blue.png', imageBounds);
 	overlay.setMap(map);
-
-	// Add the polyline to the map
-	polyline.setMap(map);
 
 	// set map height
 	let map_height = 1920 - video_height
@@ -83,11 +72,20 @@ var curPointIndex = 0;
 
 var numAttempts = 100;
 
+var maxZoom = 20;
+var minZoom = 15;
+
 function setPathPoint(position, index, attempt) {
+	var polyline = latestBorderSection.polyline;
+	var pathCoordinates = latestBorderSection.pathCoordinates;
 	attempt++;
 	//const latLng = new google.maps.LatLng(position.lat, position.lon);
 	var latstr = position.lat.toString();
 	var lonstr = position.lon.toString();
+
+	// map attempt from numAttempts to 0 from minZoom to maxZoom
+	var ratio = (attempt) / numAttempts;
+	var newZoom = minZoom + (maxZoom - minZoom) * ratio; 
 
 	let scale = 100 / Math.pow(2, (attempt));
 	// console.log("scale", scale)
@@ -100,7 +98,6 @@ function setPathPoint(position, index, attempt) {
 	var lon = parseFloat(lonstr);
 
 	var latLng = new google.maps.LatLng(lat, lon);
-
 	
 	pathCoordinates[index] = latLng;
 
@@ -111,19 +108,21 @@ function setPathPoint(position, index, attempt) {
 	// Update the polyline path with the new coordinates
 	polyline.setPath(pathCoordinates);
 
-	console.log("attempt", attempt);
+	//map.setZoom(newZoom);
+	//map.setCenter(new google.maps.LatLng(position.lat, position.lon));
+
+	// console.log("attempt", attempt);
 
 	if (attempt < numAttempts) {
 		setTimeout(() => {
 			setPathPoint(position, index, attempt);
 		}, 5000/numAttempts);
-		} else {
-		return;
 	}
 }
 
 function updateBorderLine(position) {
-	setPathPoint(position, pathCoordinates.length, 0);
+	smoothPanTo(position);
+	setPathPoint(position, latestBorderSection.pathCoordinates.length, 0);
 	return;
 	const latLng = new google.maps.LatLng(position.lat, position.lon);
 
@@ -132,7 +131,7 @@ function updateBorderLine(position) {
 	//curPointIndex = pathCoordinates.length;
 
 	// Update the polyline path with the new coordinates
-	polyline.setPath(pathCoordinates);
+	latestPolyline.setPath(pathCoordinates);
 
 	// if coordinates are bigger than 100 remove the first one
 	if (pathCoordinates.length > 500) {
@@ -151,7 +150,7 @@ function smoothPanTo(target) {
 	const startLng = currentCenter.lng();
 	const endLat = target.lat;
 	const endLng = target.lon;
-	const duration = Math.random() * 10000 + 1000; // Duration of the animation in milliseconds
+	const duration = 1000; // Duration of the animation in milliseconds
 	const frameRate = 24; // Frames per second
 	const totalFrames = Math.round((duration / 1000) * frameRate);
 	let currentFrame = 0;
@@ -225,11 +224,13 @@ S(document).ready(function () {
 			}
       console.log("s", s)
       onSegmentData({data: s})
+			return
     }
     if (event.key == 't') {
       let s = border_strings[Math.floor(Math.random() * border_strings.length)]
       console.log("s", s)
       onSegmentData({data: s})
+			return
     }
     // if key is number 0-9, send get request to server /on_segment/<segment_number>
     if (event.key >= '0' && event.key <= '9') {
@@ -339,15 +340,72 @@ S(document).ready(function () {
     var data = decode(string)
     console.log("decode data", data)
 
-		updateBorderLine(data)
+		var isValid = validateSegment(data)
 
+		if (isValid) {
+			if (latestBorderSection == null) {
+				initializeBorderSection(data)
+			}
+			console.log("borderSections", borderSections)
+			updateBorderLine(data)
+		} else {
+			latestBorderSection = null
+		}
     // t;ransitionPlanetarium(data, transition_duration)
 
+		/*
     hideMessage()
     setTimeout(() => {
       displayMessage(string)
     }, transition_duration)
+		*/
   }
+
+	const initializeBorderSection = function (position) {
+		const latLng = new google.maps.LatLng(position.lat, position.lon);
+
+		var pathCoordinates = []; // Array to store the path coordinates
+		pathCoordinates[0] = latLng;
+
+		// Initialize the Polyline with an empty path
+		var polyline = new google.maps.Polyline({
+			path: pathCoordinates,
+			geodesic: true,
+			strokeColor: '#0029FF',
+			strokeOpacity: 1,
+			strokeWeight: 10
+		});
+		
+		// Add the polyline to the map
+		polyline.setMap(map);
+
+		var borderSection = {
+			pathCoordinates,
+			polyline
+		}
+
+		borderSections.push(borderSection);
+		latestBorderSection = borderSection;
+	}
+
+	const validateSegment = function (data) {
+		if (Math.random() < 0.2) {
+			return false
+		}
+		if (data.lat == 0 || data.lon == 0) {
+			return false
+		} else {
+			// check if .lat and .lon are valid numbers
+			if (isNaN(data.lat) || isNaN(data.lon)) {
+				return false
+			}
+			// check if they are valid coordinates
+			if (data.lat > 90 || data.lat < -90 || data.lon > 180 || data.lon < -180) {
+				return false
+			}
+		}
+		return true
+	}
 
   const displayMessage = function (msg) {
     msg.split('').map((char, index) => {
