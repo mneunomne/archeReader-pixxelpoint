@@ -86,7 +86,7 @@ class ImageProcessor:
         if set(ids_np) == set([segmentIndex, segmentIndex + 1, segmentIndex + COLS, segmentIndex + COLS + 1]):
             is_valid = True
         
-        print("stored_detections", self.storedDetections)
+        # print("stored_detections", self.storedDetections)
         
         # if stored detection doesnt have specific detection id, add it
         message = self.archeReader.set_detections((self.storedDetections[0], ids_np), raw_image, is_valid)

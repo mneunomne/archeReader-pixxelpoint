@@ -318,14 +318,9 @@ S(document).ready(function () {
   var decode = function (string) {
 
 		let splitIndex = closest(20, getAllIndexes(string, "|"))
-
 		string.replace("|", "1")
-
 		string[splitIndex] = "|"
-
 		console.log("fixed string", string)
-
-
 
 		// get "|" char closest to the middle of the string
 		var middle = Math.floor(string.length / 2);
