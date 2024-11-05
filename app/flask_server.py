@@ -1,5 +1,5 @@
 from flask import Flask, render_template, Response
-# from flask_socketio import SocketIO, send, emit
+from flask_socketio import SocketIO, send, emit
 from image_processing import ImageProcessor
 import numpy as np
 import cv2
@@ -8,7 +8,9 @@ from globals import SEGMENT_OUTPUT_WIDTH, SEGMENT_OUTPUT_HEIGHT, FLASK_SERVER_IP
 app = Flask(__name__, static_url_path='', static_folder='static', template_folder='static')
 
 app.config['SECRET_KEY'] = 'secret!'
-# socketio = SocketIO(app)
+socketio = SocketIO(app)
+
+# socketio.run(app)
 
 video_output = None
 cropped_output = None

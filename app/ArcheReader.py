@@ -3,7 +3,7 @@ from globals import *
 import numpy as np
 import cv2.aruco as aruco
 from utils import list_ports, load_templates, get_center_point, template_matching
-from flask_server import app, sendVideoOutput, sendCroppedOutput, imageProcessor
+from flask_server import app, sendVideoOutput, sendCroppedOutput, imageProcessor, socketio
 import threading
 import queue
 from kiosk import run_kiosk

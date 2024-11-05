@@ -14,6 +14,18 @@ var isAnimating = false;
 var borderSections = [];
 var latestBorderSection = null;
 
+// Array of overlay data extracted from XML
+const overlayData = [
+	{ name: 'carinarnica-0', bounds: { north: 45.9057128686006, south: 45.89194144932638, east: 13.61750134737098, west: 13.59769853902374 }},
+	{ name: 'carinarnica-1', bounds: { north: 45.91451180583061, south: 45.90074038655639, east: 13.62402909011504, west: 13.6042262817678 }},
+	{ name: 'carinarnica-2', bounds: { north: 45.92698187338779, south: 45.91321045411356, east: 13.63449571413881, west: 13.61469290579157 }},
+	{ name: 'carinarnica-3', bounds: { north: 45.93840130626697, south: 45.92462988699274, east: 13.64312246615163, west: 13.62331965780439 }},
+	{ name: 'carinarnica-4', bounds: { north: 45.94935526008752, south: 45.93558384081329, east: 13.64572055121937, west: 13.62591774287213 }},
+	{ name: 'carinarnica-5', bounds: { north: 45.95951763586891, south: 45.94574621659469, east: 13.64376728003707, west: 13.62396447168983 }},
+	{ name: 'carinarnica-6', bounds: { north: 45.96943020712954, south: 45.95565878785532, east: 13.64657156135182, west: 13.62676875300457 }},
+	{ name: 'carinarnica-7', bounds: { north: 45.97760939709851, south: 45.96383797782428, east: 13.65012521215656, west: 13.63032240380932 }}
+];
+
 
 var border_strings = border.map((item) => {
 	return (item.lat + '|' + item.lon).replace('.', '-')
@@ -42,13 +54,15 @@ function initMap() {
 	// Create a map centered within the bounds
 	map = new google.maps.Map(document.getElementById("map"), {			
 		center: initial_pos,
-		zoom: 15,
+		zoom: 17,
+		zoomControl: false,
 		disableDefaultUI: true,
-		tilt: 0
+		//tilt: 0
 	});
 
+	// disable zoom control
 	// Set satellite view
-	map.setMapTypeId('satellite');
+	//map.setMapTypeId('satellite');
 
 	const imageBounds = {
 		north:  45.976872,  // maxLat
@@ -61,10 +75,25 @@ function initMap() {
 	const overlay = new google.maps.GroundOverlay('img/nova_gorica-8_2023_blue.png', imageBounds);
 	overlay.setMap(map);
 
+	// Initialize Google Maps overlays
+	overlayData.forEach(data => {
+		const imageBounds = {
+				north: data.bounds.north,
+				south: data.bounds.south,
+				east: data.bounds.east,
+				west: data.bounds.west
+		};
+
+		const _overlay = new google.maps.GroundOverlay(`img/small/${data.name}.jpg`, imageBounds);
+		_overlay.setMap(map);
+	});
+
 	// set map height
-	let map_height = 1920 - video_height
+	//let map_height = 1920 - video_height
 	console.log("map_height", window.innerHeight, map_height)
-	document.getElementById('map').style=`width: ${window.innerWidth}px; height: ${map_height}px;`
+	setInterval(() => {
+		document.getElementById('map').style=`width: ${window.innerWidth}px; height: ${map_height}px;`
+	}, 100)
 
 }
 
@@ -186,12 +215,12 @@ const resizeVideo = function () {
   let h = w/ratio
   let h2 = window.innerHeight - h
 
-  map_height = window.innerHeight - h
+  map_height = window.innerHeight - h + 22; // 20 is to hide the google stuff
 
   document.getElementById('video').style=`width: ${w}px; height: ${h}px;`
-  document.getElementById('video2').style=`width: ${w}px; height: ${h2}px;`
 
-	//document.getElementById('map').style=`width: ${w}px; height: ${h2}px;`
+  // document.getElementById('video2').style=`width: ${w}px; height: ${h2}px;`
+	// document.getElementById('map').style=`width: ${w}px; height: ${h2}px;`
   
 }
 
@@ -206,7 +235,7 @@ S(document).ready(function () {
     if (event.data.includes("fail")) {
       return
     } 
-    if (event.data.includes("detection-")) {
+    if (event.data.includes("detection")) {
       var msg = event.data.split("detection-")[1]
       onSegmentData({data: msg})
     }
@@ -287,6 +316,25 @@ S(document).ready(function () {
 
 	// decode function
   var decode = function (string) {
+
+		let splitIndex = closest(20, getAllIndexes(string, "|"))
+
+		string.replace("|", "1")
+
+		string[splitIndex] = "|"
+
+		console.log("fixed string", string)
+
+
+
+		// get "|" char closest to the middle of the string
+		var middle = Math.floor(string.length / 2);
+		var index = string.indexOf('|', middle);
+		if (index == -1) {
+			index = string.indexOf('|');
+		}
+
+
     var data = string.split("|").map((item) => {
       item = item.replace(/^(X+)/g, '')
       item = item.replace('-', '.')
@@ -316,16 +364,16 @@ S(document).ready(function () {
     return num
   }
 
-/*
   // add socket events
+	/*
   socket.on('connect', function () {
-    console.log('connected');
-  });
-
-  socket.on('disconnect', function () {
-    console.log('disconnected');
-  });
-
+		console.log('connected');
+		});
+		
+		socket.on('disconnect', function () {
+			console.log('disconnected');
+			});
+			
   // on message 'detection_data'
   socket.on('detection_data', function (msg) {
     console.log('detection_data', msg);
@@ -371,9 +419,9 @@ S(document).ready(function () {
 		var polyline = new google.maps.Polyline({
 			path: pathCoordinates,
 			geodesic: true,
-			strokeColor: '#0029FF',
+			strokeColor: '#FF0000', // red #FF0000
 			strokeOpacity: 1,
-			strokeWeight: 10
+			strokeWeight: 8
 		});
 		
 		// Add the polyline to the map
@@ -389,7 +437,7 @@ S(document).ready(function () {
 	}
 
 	const validateSegment = function (data) {
-		if (Math.random() < 0.2) {
+		if (Math.random() < 0.1) {
 			return false
 		}
 		if (data.lat == 0 || data.lon == 0) {
@@ -438,3 +486,24 @@ S(document).ready(function () {
   });
   */
 });
+
+function getAllIndexes(arr, val) {
+	var indexes = [], i = -1;
+	while ((i = arr.indexOf(val, i+1)) != -1){
+			indexes.push(i);
+	}
+	return indexes;
+}
+
+function closest (num, arr) {
+	var curr = arr[0];
+	var diff = Math.abs (num - curr);
+	for (var val = 0; val < arr.length; val++) {
+			var newdiff = Math.abs (num - arr[val]);
+			if (newdiff < diff) {
+					diff = newdiff;
+					curr = arr[val];
+			}
+	}
+	return curr;
+}
