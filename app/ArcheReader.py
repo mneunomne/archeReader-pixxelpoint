@@ -202,7 +202,7 @@ class ArcheReader:
 			if self.roi_corners is not None:
 				video_output = self.display_grid_lines(video_output)
 				self.frames_displaying_grid += 1
-				if (self.frames_displaying_grid > 60):
+				if (self.frames_displaying_grid > 30):
 					self.roi_corners = None
 					self.frames_displaying_grid = 0
      
