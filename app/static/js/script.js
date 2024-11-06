@@ -4,7 +4,7 @@ const messageContainer = document.getElementById('characters')
 const video_width = 800
 const video_height = 600
 
-const transition_duration = 4000
+const transition_duration = 1000
 
 var map_height;
 
@@ -200,7 +200,7 @@ function updateBorderLine(position) {
 		if (position.lat == 0 || position.lon == 0) {
 			map.setZoom(10);
 		} else {
-			map.setZoom(parseInt(Math.random() * 5) + 15);
+			map.setZoom(parseInt(Math.random() * 7) + 13);
 		}
 	} else {
 		console.log("in bounds")
@@ -506,12 +506,12 @@ S(document).ready(function () {
 
 		displayPosition(data)
 	
-		/*
+		
     hideMessage()
     setTimeout(() => {
       displayMessage(string)
     }, transition_duration)
-		*/
+		
   }
 
 	const initializeBorderSection = function (position) {
@@ -575,7 +575,7 @@ S(document).ready(function () {
     messageContainer.className = ''
     setTimeout(() => {
       messageContainer.innerHTML = ''
-    }, 1500)
+    }, 1000)
   }
   /*
   // clear message
