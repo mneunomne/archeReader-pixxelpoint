@@ -1,7 +1,7 @@
 import cv2 
 import numpy as np
 import os
-from globals import SEGMENT_WIDTH, SEGMENT_HEIGHT
+from globals import SEGMENT_OUTPUT_WIDTH, SEGMENT_OUTPUT_HEIGHT, INNER_COLS, INNER_ROWS, PADDING_RIGHT, PADDING_LEFT, PADDING_TOP, PADDING_BOTTOM
 
 def list_ports():
     """
@@ -70,3 +70,47 @@ def perspective_transform(segment, segment_corners):
     warped_segment = cv2.warpPerspective(segment, M, (segment.shape[1], segment.shape[0]))
 
     return warped_segment
+
+def draw_lines():
+		lines_frame = np.zeros((SEGMENT_OUTPUT_HEIGHT, SEGMENT_OUTPUT_WIDTH, 3), np.uint8)
+  	# rotate 90 degrees
+		_w = SEGMENT_OUTPUT_WIDTH
+		_h = SEGMENT_OUTPUT_HEIGHT
+		#padding = 35
+		padding_right = PADDING_RIGHT
+		padding_left = PADDING_LEFT
+		padding_top = PADDING_TOP
+		padding_bottom = PADDING_BOTTOM
+		# Calculate the dimensions of each segment
+		segment_width = (_w - (padding_right + padding_left)) // INNER_COLS
+		segment_height = ((_h - (padding_top + padding_bottom))  // INNER_ROWS)
+  		
+		# Loop through the grid and extract each segment
+		for j in range(INNER_COLS):
+			for i in range(INNER_ROWS):
+				if i < 2 and j < 2:
+					continue
+				if i < 2 and j > INNER_COLS - 3:
+					continue
+				if i > INNER_ROWS - 3 and j < 2:
+					continue
+				if i > INNER_ROWS - 3 and j > INNER_COLS - 3:
+					continue
+	 
+				# Calculate the coordinates for the current segment
+				x_start = j * segment_width + padding_left
+				y_start = i * segment_height + padding_top + 0
+				x_end = (j + 1) * segment_width + padding_left
+				y_end = (i + 1) * segment_height + padding_top + 0
+				segment_corners = np.array([[x_start, y_start], [x_end, y_start], [x_end, y_end], [x_start, y_end]], dtype='float32')
+
+				# draw rect from segment_corners
+				for k in range(4):
+					start_point = segment_corners[k]
+					end_point = segment_corners[(k + 1) % 4]
+					# convert to int 
+					start_point = (int(start_point[0]), int(start_point[1]))
+					end_point = (int(end_point[0]), int(end_point[1]))
+					lines_frame = cv2.line(lines_frame, start_point, end_point, (0, 255, 0), 2)
+		return lines_frame
+		

@@ -2,7 +2,7 @@ import cv2
 from globals import *
 import numpy as np
 import cv2.aruco as aruco
-from utils import list_ports, load_templates, get_center_point, template_matching
+from utils import list_ports, load_templates, get_center_point, template_matching, draw_lines
 from flask_server import app, sendVideoOutput, sendAvaragedOutput, sendCroppedOutput, imageProcessor, sendLiveOutput
 import threading
 import queue
@@ -15,6 +15,8 @@ thread_flask = None
 
 server_url = "http://{}:{}/".format(FLASK_SERVER_IP, FLASK_SERVER_PORT)
 
+lines_image = draw_lines()
+
 class ArcheReader:
 	
 	capture = None
@@ -22,6 +24,8 @@ class ArcheReader:
 	frame_buffer = []
 
 	crop_size = 200
+ 
+	roi_corners = None
 	
 	def __init__(self, args):
 		print("init")
@@ -38,7 +42,9 @@ class ArcheReader:
 		self.avarage_queue = queue.Queue()  # Queue for passing detections between threads
 	
 		imageProcessor.init(args, self)
-				
+  
+		self.roi_corners = None
+  
 		# start flask
 		if (args.flask):
 			thread_flask = threading.Thread(target=app.run, args=(FLASK_SERVER_IP, FLASK_SERVER_PORT,))
@@ -134,7 +140,7 @@ class ArcheReader:
 			
 			 # display image
 			image = self.get_image()
-   
+	 
 			interface_image = image.copy()
 			
 			video_output = image.copy()
@@ -188,9 +194,37 @@ class ArcheReader:
 			# if len(self.detections[0]) == 4 and len(self.detections[1]) == 4:
 			corners, ids = imageProcessor.check_markers(image)
 			video_output = aruco.drawDetectedMarkers(video_output, corners, ids)
-			# interface_image = aruco.drawDetectedMarkers(interface_image, corners, np.array([]))
-			# video_output = self.display_detections(self.detections, video_output)
-				# output_image = self.display_detections(self.detections, output_image)
+			if self.roi_corners is not None:
+				# Example: draw a semi-transparent red rectangle on transparent_image
+				# overlay_color = (0, 0, 255, 100)  # Red color with alpha 100
+				# cv2.fillPoly(video_output, [self.roi_corners], overlay_color[:3])
+				# Create a transparent image with the same size as blank_canvas
+				# rgba transparent image with shape of video_output
+				transparent_image = np.zeros((video_output.shape[0], video_output.shape[1], 4), np.uint8)
+
+						
+				# Define the source points from `lines_frame` (100x100 canvas corners)
+				src_points = np.float32([[0, 0], [SEGMENT_OUTPUT_WIDTH-1, 0], [SEGMENT_OUTPUT_WIDTH-1, SEGMENT_OUTPUT_HEIGHT-1], [0, SEGMENT_OUTPUT_HEIGHT-1]])
+
+				# Define the destination points in the main `image` canvas for `roi_corners`
+				dst_points = np.float32(self.roi_corners).reshape(-1, 2)
+
+				# Compute the perspective transformation matrix
+				transform_matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+    
+				# Warp `lines_frame` to the size and shape of `roi_corners` on `transparent_image`
+				warped_lines = cv2.warpPerspective(lines_image, transform_matrix, (video_output.shape[1], video_output.shape[0]))
+
+				cv2.imshow("warped_lines", warped_lines)
+				cv2.imshow("lines_image", lines_image)
+    
+				# Overlay `warped_lines` onto `transparent_image` with transparency
+				alpha = 0.5  # Adjust transparency level as desired
+				cv2.addWeighted(warped_lines, alpha, transparent_image, 1 - alpha, 0, transparent_image)
+				video_output = cv2.addWeighted(transparent_image, alpha, video_output, 1 - alpha, 0)
+				# video_output = blended_image
+
+
 						
 			# send video to web
 			# sendCroppedOutput(output_image)
@@ -208,7 +242,7 @@ class ArcheReader:
 			# send video to flask
 			sendVideoOutput(video_output)
 			# sendVideoOutput(interface_image)
-      
+			
 			# send live output
 			sendLiveOutput(output_image)
 			
@@ -222,7 +256,7 @@ class ArcheReader:
 			
 			if avarage_frames is not None:
 				sendAvaragedOutput(avarage_frames)
-   
+	 
 			cv2.imshow('arche-reading', video_output)
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				break
@@ -280,18 +314,20 @@ class ArcheReader:
 		roi_cropped = rect_roi
 		
 		segment_data, roi_cropped = self.get_segment_data(roi_cropped)
+	
+		# blank canvas for the lines to be placed on the image on the roi_corners		
 		
-		return segment_data, roi_cropped
+		return segment_data, roi_cropped, roi_corners
 	
 	def get_segment_data(self, roi_cropped):    
 		# rotate 90 degrees
 		_w = SEGMENT_OUTPUT_WIDTH
 		_h = SEGMENT_OUTPUT_HEIGHT
 		#padding = 35
-		padding_right = 22
-		padding_left = 25
-		padding_top = 22
-		padding_bottom = 25
+		padding_right = PADDING_RIGHT
+		padding_left = PADDING_LEFT
+		padding_top = PADDING_TOP
+		padding_bottom = PADDING_BOTTOM
 		# Calculate the dimensions of each segment
 		segment_width = (_w - (padding_right + padding_left)) // INNER_COLS
 		segment_height = ((_h - (padding_top + padding_bottom))  // INNER_ROWS)
@@ -300,7 +336,6 @@ class ArcheReader:
 				
 		# Step 1: Apply Bilateral Filter for noise reduction while preserving edges
 		denoised_image = cv2.bilateralFilter(roi_cropped, d=9, sigmaColor=75, sigmaSpace=75)
-
 
 		# Step 4: Convert masked image to LAB color space and apply CLAHE to the L channel for contrast enhancement
 		lab = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2LAB)
@@ -323,7 +358,7 @@ class ArcheReader:
 		enhanced_sharpened = cv2.addWeighted(sharpened_image, 0.8, laplacian, 0.2, 0)
 
 		roi_cropped = enhanced_sharpened.copy()
-
+	
 		# remove blue channel
 		# roi_cropped[:, :, 0] = cv2.addWeighted(roi_cropped[:, :, 0], 1.50, np.zeros(roi_cropped[:, :, 0].shape, roi_cropped[:, :, 0].dtype), 0, 0)
 		
@@ -420,11 +455,13 @@ class ArcheReader:
 		# Put the new detections in the queue for the main thread to pick up
 		# self.detections_queue.put(detections)
 		if is_valid:
-			segment_data, roi_cropped = self.process_detections(self.detections, image)
+			segment_data, roi_cropped, roi_corners = self.process_detections(self.detections, image)
+			self.roi_corners = roi_corners
 			self.cropped_queue.put(roi_cropped)
 			data_message = self.decode_segment_data(segment_data)
 			return data_message
 		else:
+			self.roi_corners = None
 			return ""
 		
 	def clear(self):

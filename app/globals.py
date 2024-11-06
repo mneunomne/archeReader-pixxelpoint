@@ -27,6 +27,11 @@ INNER_ROWS = 8
 # detections attempts
 MAX_ATTEMPTS = 100
 
+PADDING_RIGHT = 22
+PADDING_LEFT = 25
+PADDING_TOP = 22
+PADDING_BOTTOM = 25
+
 # paths
 FOLDER_PATH = 'app/numerals__old/'
 TEST_FILE = 'app/test_images/pixxel_test_0.png'
