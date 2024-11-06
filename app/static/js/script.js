@@ -124,24 +124,13 @@ const zoomOut = function () {
 
 var curPointIndex = 0;
 
-var numAttempts = 100;
+var numAttempts = 500;
 
 var maxZoom = 20;
 var minZoom = 15;
 
-function setPathPoint(position, index, attempt) {
+function tryPathPoint(position, index, attempt) {
 	// if position is within bounds 
-	if (position.lat > imageBounds.north || position.lat < imageBounds.south || position.lon > imageBounds.east || position.lon < imageBounds.west) {
-		console.log("out of bounds")
-		if (position.lat == 0 || position.lon == 0) {
-			map.setZoom(10);
-		} else {
-			map.setZoom(15);
-		}
-	} else {
-		console.log("in bounds")
-		map.setZoom(18);
-	}
 	// set map zoom
 	var polyline = latestBorderSection.polyline;
 	var pathCoordinates = latestBorderSection.pathCoordinates;
@@ -179,17 +168,46 @@ function setPathPoint(position, index, attempt) {
 	//map.setCenter(new google.maps.LatLng(position.lat, position.lon));
 
 	// console.log("attempt", attempt);
-
+	
 	if (attempt < numAttempts) {
 		setTimeout(() => {
-			setPathPoint(position, index, attempt);
-		}, 5000/numAttempts);
+			tryPathPoint(position, index, attempt);
+		}, 25000/numAttempts);
 	}
 }
 
+function setPathPoint(position, index, attempt) {
+	// if position is within bounds 
+	// set map zoom
+	var polyline = latestBorderSection.polyline;
+	var pathCoordinates = latestBorderSection.pathCoordinates;
+	
+	var latLng = new google.maps.LatLng(position.lat, position.lon);
+	
+	pathCoordinates[index] = latLng;
+
+	// Add the new position to the pathCoordinates array
+	//pathCoordinates[pathCoordinates.length] = latLng;
+	//curPointIndex = pathCoordinates.length - 1;
+
+	// Update the polyline path with the new coordinates
+	polyline.setPath(pathCoordinates);
+}
+
 function updateBorderLine(position) {
+	if (position.lat > imageBounds.north || position.lat < imageBounds.south || position.lon > imageBounds.east || position.lon < imageBounds.west) {
+		console.log("out of bounds")
+		if (position.lat == 0 || position.lon == 0) {
+			map.setZoom(10);
+		} else {
+			map.setZoom(parseInt(Math.random() * 5) + 15);
+		}
+	} else {
+		console.log("in bounds")
+		map.setZoom(parseInt(Math.random() * 3) + 18);
+	}
+	tryPathPoint(position, latestBorderSection.pathCoordinates.length, 0);
 	smoothPanTo(position);
-	setPathPoint(position, latestBorderSection.pathCoordinates.length, 0);
 	return;
 	const latLng = new google.maps.LatLng(position.lat, position.lon);
 
@@ -323,8 +341,9 @@ S(document).ready(function () {
 
       $.get("/on_segment/" + segment_number, function (data, status) {
 				// make sure carinarnica appears 
-        console.log("data", data)
-        onSegmentData({data: data})
+        console.log("data", data, border[segment_number])
+
+        onSegmentData({data: data}, border[segment_number])
       });
     }
     n = undefined;
@@ -460,12 +479,30 @@ S(document).ready(function () {
 		}
 	}
 
-  const onSegmentData = function (msg) {
+  const onSegmentData = function (msg, ref_data) {
     console.log('detection_data', msg);
     var string = msg.data//.replace(/X/g, '')
     console.log('string', string);
     var data = decode(string)
     console.log("decode data", data)
+		
+		if (ref_data !== undefined) {
+			let lat_diff = data.lat - ref_data.lat
+			let lon_diff = data.lon - ref_data.lon
+			data.lat = (ref_data.lat + (lat_diff*Math.random()))
+			data.lon = (ref_data.lon + (lon_diff*Math.random()))
+
+			let ref_lat_s = (ref_data.lat + '').padEnd(20, '0')
+			let ref_lon_s = (ref_data.lon + '').padEnd(20, '0')
+
+			let data_lat_s = (ref_data.lat + '').padEnd(20, '0')
+			let data_lon_s = (ref_data.lon + '').padEnd(20, '0')
+
+			console.log("ref ", ref_lat_s, ref_lat_s)
+			console.log("data ", data_lon_s, data_lon_s)
+
+			console.log("#ref_data", ref_data, lat_diff, lon_diff)
+		}
 
 		displayPosition(data)
 	
