@@ -26,6 +26,8 @@ class ArcheReader:
 	crop_size = 200
  
 	roi_corners = None
+ 
+	frames_displaying_grid = None
 	
 	def __init__(self, args):
 		print("init")
@@ -35,6 +37,8 @@ class ArcheReader:
 		
 		self.test_parameters = args.parameters
 		
+		self.frames_displaying_grid = 0
+  
 		self.detections = [[],[]]
 		
 		self.detections_queue = queue.Queue()  # Queue for passing detections between threads
@@ -146,7 +150,6 @@ class ArcheReader:
 			video_output = image.copy()
 	 
 			avarage_frames = None
-			output_avarage_frames = None
 			
 			if self.test_parameters:
 				video_output = self.test_detection(video_output)
@@ -175,7 +178,7 @@ class ArcheReader:
 			# Separate the LAB channels
 			l, a, b = cv2.split(lab)
 			# Apply CLAHE to the L channel
-			clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(10, 10))
+			clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 			cl = clahe.apply(l)
 			# Merge the enhanced L channel with the original A and B channels
 			limg = cv2.merge((cl, a, b))
@@ -187,45 +190,22 @@ class ArcheReader:
 			# output_image[:, :, 2] = cv2.addWeighted(output_image[:, :, 2], 1.90, np.zeros(output_image[:, :, 2].shape, output_image[:, :, 2].dtype), 0, 0)
 			
 			# increase contrast
-			output_image = cv2.convertScaleAbs(output_image, alpha=1.25, beta=1)
+			output_image = cv2.convertScaleAbs(output_image, alpha=0.65, beta=1)
 
 			video_output = output_image.copy()
 	 
 			# if len(self.detections[0]) == 4 and len(self.detections[1]) == 4:
 			corners, ids = imageProcessor.check_markers(image)
 			video_output = aruco.drawDetectedMarkers(video_output, corners, ids)
+			
+			# display grid lines
 			if self.roi_corners is not None:
-				# Example: draw a semi-transparent red rectangle on transparent_image
-				# overlay_color = (0, 0, 255, 100)  # Red color with alpha 100
-				# cv2.fillPoly(video_output, [self.roi_corners], overlay_color[:3])
-				# Create a transparent image with the same size as blank_canvas
-				# rgba transparent image with shape of video_output
-				transparent_image = np.zeros((video_output.shape[0], video_output.shape[1], 4), np.uint8)
-
-						
-				# Define the source points from `lines_frame` (100x100 canvas corners)
-				src_points = np.float32([[0, 0], [SEGMENT_OUTPUT_WIDTH-1, 0], [SEGMENT_OUTPUT_WIDTH-1, SEGMENT_OUTPUT_HEIGHT-1], [0, SEGMENT_OUTPUT_HEIGHT-1]])
-
-				# Define the destination points in the main `image` canvas for `roi_corners`
-				dst_points = np.float32(self.roi_corners).reshape(-1, 2)
-
-				# Compute the perspective transformation matrix
-				transform_matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-    
-				# Warp `lines_frame` to the size and shape of `roi_corners` on `transparent_image`
-				warped_lines = cv2.warpPerspective(lines_image, transform_matrix, (video_output.shape[1], video_output.shape[0]))
-
-				cv2.imshow("warped_lines", warped_lines)
-				cv2.imshow("lines_image", lines_image)
-    
-				# Overlay `warped_lines` onto `transparent_image` with transparency
-				alpha = 0.5  # Adjust transparency level as desired
-				cv2.addWeighted(warped_lines, alpha, transparent_image, 1 - alpha, 0, transparent_image)
-				video_output = cv2.addWeighted(transparent_image, alpha, video_output, 1 - alpha, 0)
-				# video_output = blended_image
-
-
-						
+				video_output = self.display_grid_lines(video_output)
+				self.frames_displaying_grid += 1
+				if (self.frames_displaying_grid > 60):
+					self.roi_corners = None
+					self.frames_displaying_grid = 0
+     
 			# send video to web
 			# sendCroppedOutput(output_image)
 	 
@@ -492,6 +472,42 @@ class ArcheReader:
 		# socketio.emit('detection_data', {'data': data_message})
 		# socketio.send('detection_data', data)
 	
+	def display_grid_lines(self, image):
+		# Assume SEGMENT_OUTPUT_WIDTH and SEGMENT_OUTPUT_HEIGHT are defined for lines_image dimensions
+		# Define source points for `lines_frame` (100x100 canvas corners)
+		src_points = np.float32([[0, 0], [SEGMENT_OUTPUT_WIDTH-1, 0], 
+														[SEGMENT_OUTPUT_WIDTH-1, SEGMENT_OUTPUT_HEIGHT-1], 
+														[0, SEGMENT_OUTPUT_HEIGHT-1]])
+
+		# Define the destination points for `roi_corners`
+		dst_points = np.float32(self.roi_corners).reshape(-1, 2)
+
+		# Compute the perspective transformation matrix
+		transform_matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+
+		lines_image_rgba = cv2.cvtColor(lines_image, cv2.COLOR_BGR2BGRA)
+
+		black_mask = cv2.cvtColor(lines_image, cv2.COLOR_BGR2GRAY) == 0
+		lines_image_rgba[:, :, 3] = np.where(black_mask, 0, 255).astype(np.uint8)
+
+
+		# Warp `lines_image` to the size and shape of `roi_corners`
+		warped_lines = cv2.warpPerspective(lines_image_rgba, transform_matrix, (image.shape[1], image.shape[0]))
+
+		# Ensure the `image` image is in RGBA format for alpha blending
+		image_rgba = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+
+		# Separate the color and alpha channels from `warped_lines`
+		overlay_color = warped_lines[:, :, :3]
+		overlay_alpha = warped_lines[:, :, 3] / 255.0  # Normalize alpha to range [0, 1]
+
+		# Blend the warped overlay onto `video_output_rgba` only where overlay is non-transparent
+		for c in range(3):  # Loop over color channels (B, G, R)
+				image_rgba[:, :, c] = (1.0 - overlay_alpha) * image_rgba[:, :, c] + overlay_alpha * overlay_color[:, :, c]
+	
+		image = cv2.cvtColor(image_rgba, cv2.COLOR_BGRA2BGR)
+		return image
+ 
 	def test_detection(self, raw_image):
 		image = raw_image.copy()
 		# Convert the image to grayscale (if necessary)

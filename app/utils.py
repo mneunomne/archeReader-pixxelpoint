@@ -72,7 +72,9 @@ def perspective_transform(segment, segment_corners):
     return warped_segment
 
 def draw_lines():
+		# transparent canvas
 		lines_frame = np.zeros((SEGMENT_OUTPUT_HEIGHT, SEGMENT_OUTPUT_WIDTH, 3), np.uint8)
+		lines_frame = cv2.cvtColor(lines_frame, cv2.COLOR_BGR2BGRA)
   	# rotate 90 degrees
 		_w = SEGMENT_OUTPUT_WIDTH
 		_h = SEGMENT_OUTPUT_HEIGHT
