@@ -37,12 +37,41 @@ class ImageProcessor:
 		def clear_stored_markers(self):
 				self.storedDetections = ([], [])
 
-		def process_image(self, raw_image, segmentIndex):
-				image = raw_image.copy()
-				
-				# Convert the image to grayscale (if necessary)
-				#gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+		def process_image(self, avaraged_frames, live_frame, segmentIndex):
+				image = live_frame.copy()
+				avaraged_image = avaraged_frames.copy()
 
+				# Detect markers
+				corners, ids = self.check_markers(image)
+								
+				is_valid, detections = self.validateMarkers(image, corners, ids, segmentIndex)
+				
+				# raw_image = aruco.drawDetectedMarkers(raw_image, corners, ids)
+
+				# store detections that are valid
+				for index, id in enumerate(detections[1]):
+						# print("id" ,id)
+						if id not in self.storedDetections[1]:
+								self.storedDetections[0].append(detections[0][index])
+								self.storedDetections[1].append(id)
+						else:
+								stored_index = self.storedDetections[1].index(id)
+								self.storedDetections[0][stored_index] = detections[0][index]
+
+				# Convert ids to a numpy array
+				ids_np = np.array(self.storedDetections[1], int)
+
+				# Check if all expected detections are present in storedDetections
+				if set(ids_np) == set([segmentIndex, segmentIndex + 1, segmentIndex + COLS, segmentIndex + COLS + 1]):
+						is_valid = True
+				
+				# print("stored_detections", self.storedDetections)
+				
+				# if stored detection doesnt have specific detection id, add it
+				message = self.archeReader.set_detections((self.storedDetections[0], ids_np), avaraged_image, is_valid)
+				return is_valid, message
+		
+		def check_markers(self, image):
 				# Load the ArUco dictionary (you may need to adjust the dictionary type)
 				aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_1000)
 				
@@ -79,40 +108,13 @@ class ImageProcessor:
 				# Create a kernel for the Unsharp Mask
 				gaussian_blur = cv2.GaussianBlur(enhanced_image, (9, 9), 10.0)
 				sharpened_image = cv2.addWeighted(enhanced_image, 1.5, gaussian_blur, -0.5, 0)
-    
+		
 				# Step 6: Convert the sharpened image to grayscale
 				gray = cv2.cvtColor(sharpened_image, cv2.COLOR_BGR2GRAY)
-								
-				# Detect markers
 				corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
-								
-				is_valid, detections = self.validateMarkers(image, corners, ids, segmentIndex)
-				
-				# raw_image = aruco.drawDetectedMarkers(raw_image, corners, ids)
-
-				# store detections that are valid
-				for index, id in enumerate(detections[1]):
-						# print("id" ,id)
-						if id not in self.storedDetections[1]:
-								self.storedDetections[0].append(detections[0][index])
-								self.storedDetections[1].append(id)
-						else:
-								stored_index = self.storedDetections[1].index(id)
-								self.storedDetections[0][stored_index] = detections[0][index]
-
-				# Convert ids to a numpy array
-				ids_np = np.array(self.storedDetections[1], int)
-
-				# Check if all expected detections are present in storedDetections
-				if set(ids_np) == set([segmentIndex, segmentIndex + 1, segmentIndex + COLS, segmentIndex + COLS + 1]):
-						is_valid = True
-				
-				# print("stored_detections", self.storedDetections)
-				
-				# if stored detection doesnt have specific detection id, add it
-				message = self.archeReader.set_detections((self.storedDetections[0], ids_np), raw_image, is_valid)
-				return is_valid, message
-						
+				return corners, ids
+				# Detect markers
+	
 		def validateMarkers(self, image, corners, ids, segmentIndex):
 				# make new tuple
 				validated_markers = []
@@ -128,7 +130,7 @@ class ImageProcessor:
 				# find if ids contains top_left, top_right, bottom_left, bottom_right
 				corner_ids = [top_left, top_right, bottom_left, bottom_right]
 				
-				print("corner_ids", corner_ids, segmentIndex, ids)
+				# print("corner_ids", corner_ids, segmentIndex, ids)
 
 				for index, id in enumerate(ids):
 						if id in corner_ids:
@@ -139,8 +141,7 @@ class ImageProcessor:
 				
 				validated_ids = np.array(validated_ids, int)  # Convert to numpy array
 				
-				print("validated_ids", validated_ids)
-
+				#print("validated_ids", validated_ids)
 
 				if len(corner_ids) > 0:
 						return False, (validated_markers, validated_ids)

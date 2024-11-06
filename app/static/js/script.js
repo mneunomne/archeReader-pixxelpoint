@@ -271,16 +271,25 @@ S(document).ready(function () {
   socket.onmessage = (event) => {
     console.log("onmessage", event.data);
     if (event.data.includes("fail")) {
-      console.log("fail")
-			latestBorderSection = null
+			var index = parseInt(event.data.split("-fail")[0].split("index-")[1])
+      console.log("fail", index)
+			if (index >= 35 && index <= 38) {
+				displayPosition(border[index])
+			} else {
+				latestBorderSection = null
+			}
     } 
     if (event.data.includes("detection")) {
-      var msg = event.data.split("detection-")[1]
-      onSegmentData({data: msg})
+      var msg = event.data.split("-detection-")[1]
+      var index = parseInt(event.data.split("-detection-")[0].split("index-")[1])
+			console.log("detection", index, msg)
+			if (index >= 35 && index <= 38) {
+				displayPosition(border[index])
+			} else {
+				onSegmentData({data: msg})
+			}
     }
-		if (event.data.includes("border")) {
-			var msg = event.data.split("border-")[1]
-			onSegmentData({data})
+		if (event.data.includes("return_to_top")) {
 			zoomOut()
 		}
   };
@@ -313,6 +322,7 @@ S(document).ready(function () {
       //return onSegmentData({data: data[segment_number]})
 
       $.get("/on_segment/" + segment_number, function (data, status) {
+				// make sure carinarnica appears 
         console.log("data", data)
         onSegmentData({data: data})
       });
@@ -418,13 +428,7 @@ S(document).ready(function () {
   });
   */
 
-  const onSegmentData = function (msg) {
-    console.log('detection_data', msg);
-    var string = msg.data//.replace(/X/g, '')
-    console.log('string', string);
-    var data = decode(string)
-    console.log("decode data", data)
-
+	const displayPosition = function (data) {
 		var isValid = validateSegment(data)
 
 		if (isValid) {
@@ -454,8 +458,17 @@ S(document).ready(function () {
 		} else {
 			latestBorderSection = null
 		}
-    // t;ransitionPlanetarium(data, transition_duration)
+	}
 
+  const onSegmentData = function (msg) {
+    console.log('detection_data', msg);
+    var string = msg.data//.replace(/X/g, '')
+    console.log('string', string);
+    var data = decode(string)
+    console.log("decode data", data)
+
+		displayPosition(data)
+	
 		/*
     hideMessage()
     setTimeout(() => {

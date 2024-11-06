@@ -3,12 +3,12 @@ from globals import *
 import numpy as np
 import cv2.aruco as aruco
 from utils import list_ports, load_templates, get_center_point, template_matching
-from flask_server import app, sendVideoOutput, sendAvaragedOutput, sendCroppedOutput, imageProcessor
+from flask_server import app, sendVideoOutput, sendAvaragedOutput, sendCroppedOutput, imageProcessor, sendLiveOutput
 import threading
 import queue
 from kiosk import run_kiosk
 
-FRAME_BUFFER_SIZE = 20  # Number of frames to average
+FRAME_BUFFER_SIZE = 10  # Number of frames to average
 
 ready_to_read = False
 thread_flask = None
@@ -36,7 +36,7 @@ class ArcheReader:
 		self.detections_queue = queue.Queue()  # Queue for passing detections between threads
 		self.cropped_queue = queue.Queue()  # Queue for passing detections between threads
 		self.avarage_queue = queue.Queue()  # Queue for passing detections between threads
-  
+	
 		imageProcessor.init(args, self)
 				
 		# start flask
@@ -134,26 +134,13 @@ class ArcheReader:
 			
 			 # display image
 			image = self.get_image()
+   
+			interface_image = image.copy()
 			
 			video_output = image.copy()
-   
+	 
 			avarage_frames = None
-			self.frame_buffer.append(video_output)
-			if len(self.frame_buffer) > FRAME_BUFFER_SIZE:
-				# clear array
-				self.frame_buffer = []
-   
-			if len(self.frame_buffer) == FRAME_BUFFER_SIZE:
-				# Compute the average image
-				averaged_frame = np.mean(self.frame_buffer, axis=0).astype(np.uint8)
-				self.avarage_queue.put(averaged_frame)
-      
-			# try if avaraged frames is available
-			try:
-				avarage_frames = self.avarage_queue.get_nowait()	
-				cv2.imshow('avarage_frames', avarage_frames)
-			except queue.Empty:
-				pass
+			output_avarage_frames = None
 			
 			if self.test_parameters:
 				video_output = self.test_detection(video_output)
@@ -174,14 +161,9 @@ class ArcheReader:
 						cv2.imshow('cropped', roi_cropped)
 				except queue.Empty:
 						pass
-			
-
-			# send video to flask
-			sendVideoOutput(video_output)
-			if avarage_frames is not None:
-				sendAvaragedOutput(avarage_frames)
-			output_image = video_output
-
+					
+			output_image = video_output.copy()
+	 
 			# Convert the image to LAB color space
 			lab = cv2.cvtColor(output_image, cv2.COLOR_BGR2LAB)
 			# Separate the LAB channels
@@ -196,18 +178,51 @@ class ArcheReader:
 			output_image = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
 			
 			# more red channel
-			output_image[:, :, 2] = cv2.addWeighted(output_image[:, :, 2], 1.50, np.zeros(output_image[:, :, 2].shape, output_image[:, :, 2].dtype), 0, 0)
-			
-			if len(self.detections[0]) == 4 and len(self.detections[1]) == 4:
-				# video_output = self.display_detections(self.detections, video_output)
-				output_image = self.display_detections(self.detections, output_image)
+			# output_image[:, :, 2] = cv2.addWeighted(output_image[:, :, 2], 1.90, np.zeros(output_image[:, :, 2].shape, output_image[:, :, 2].dtype), 0, 0)
 			
 			# increase contrast
-			output_image = cv2.convertScaleAbs(video_output, alpha=0.65, beta=2)
-			
+			output_image = cv2.convertScaleAbs(output_image, alpha=1.25, beta=1)
+
+			video_output = output_image.copy()
+	 
+			# if len(self.detections[0]) == 4 and len(self.detections[1]) == 4:
+			corners, ids = imageProcessor.check_markers(image)
+			video_output = aruco.drawDetectedMarkers(video_output, corners, ids)
+			# interface_image = aruco.drawDetectedMarkers(interface_image, corners, np.array([]))
+			# video_output = self.display_detections(self.detections, video_output)
+				# output_image = self.display_detections(self.detections, output_image)
+						
 			# send video to web
-			sendCroppedOutput(output_image)
+			# sendCroppedOutput(output_image)
+	 
+			self.frame_buffer.append(output_image)
+			if len(self.frame_buffer) > FRAME_BUFFER_SIZE:
+				# clear array
+				self.frame_buffer = []
+	 
+			if len(self.frame_buffer) == FRAME_BUFFER_SIZE:
+				# Compute the average image
+				averaged_frame = np.mean(self.frame_buffer, axis=0).astype(np.uint8)
+				self.avarage_queue.put(averaged_frame)
+		
+			# send video to flask
+			sendVideoOutput(video_output)
+			# sendVideoOutput(interface_image)
+      
+			# send live output
+			sendLiveOutput(output_image)
 			
+			# try if avaraged frames is available
+			try:
+				avarage_frames = self.avarage_queue.get_nowait()
+				cv2.imshow('avarage_frames', avarage_frames)
+			except queue.Empty:
+				pass
+			
+			
+			if avarage_frames is not None:
+				sendAvaragedOutput(avarage_frames)
+   
 			cv2.imshow('arche-reading', video_output)
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				break
@@ -275,7 +290,7 @@ class ArcheReader:
 		#padding = 35
 		padding_right = 22
 		padding_left = 25
-		padding_top = 25
+		padding_top = 22
 		padding_bottom = 25
 		# Calculate the dimensions of each segment
 		segment_width = (_w - (padding_right + padding_left)) // INNER_COLS
@@ -389,7 +404,7 @@ class ArcheReader:
 	def display_detections(self, new_detections, video_output):
 		# Update the OpenCV display with new detections
 		# This method should be called from the main thread
-		# print("New Detections:", new_detections)
+		print("New Detections:", new_detections)
 		markers = new_detections[0]
 		#ids = new_detections[1]
 		

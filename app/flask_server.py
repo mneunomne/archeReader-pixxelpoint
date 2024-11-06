@@ -15,6 +15,7 @@ socketio = SocketIO(app)
 video_output = None
 cropped_output = None
 avaraged_output = None
+live_output = None
 capture_avarage_frames = False
 
 # make cropped image blank with SEGMENT_OUTPUT_WIDTH and SEGMENT_OUTPUT_HEIGHT with 3 channels using opencv / np
@@ -29,6 +30,10 @@ def sendVideoOutput(frame):
     global video_output
     video_output = frame
 
+def sendLiveOutput(frame):
+    global live_output
+    live_output = frame
+
 def sendAvaragedOutput(frame):
 		global avaraged_output
 		avaraged_output = frame	
@@ -38,13 +43,13 @@ def sendCroppedOutput(frame):
     cropped_output = frame
 
 def gen_frames():  # generate frame by frame from camera
-    global cropped_output
+    global video_output
     while True:
         # Capture frame-by-frame
-        if cropped_output is None:
+        if video_output is None:
             break
         else:
-            frame = cropped_output.copy()
+            frame = video_output.copy()
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
@@ -102,7 +107,7 @@ def on_segment(segmentIndex):
     print('received segmentIndex', segmentIndex)
     global avaraged_output
     if avaraged_output is None:
-        print('cropped_output is None')
+        print('avaraged_output is None')
         return Response('fail', mimetype='text/plain')
     else:
         imageProcessor.clear_stored_markers()
@@ -110,7 +115,7 @@ def on_segment(segmentIndex):
         attempts = 0
         while not is_valid and attempts < MAX_ATTEMPTS:
             attempts = attempts + 1
-            is_valid, msg = imageProcessor.process_image(avaraged_output, segmentIndex)
+            is_valid, msg = imageProcessor.process_image(avaraged_output, live_output, segmentIndex)
             print('is_valid', is_valid, attempts)
             if is_valid: 
                 attempts = MAX_ATTEMPTS
@@ -118,7 +123,6 @@ def on_segment(segmentIndex):
             print('msg', msg)
             return Response(msg, mimetype='text/plain')
         else:
-            print('not valid', is_valid)
             return Response('fail', mimetype='text/plain')
 
 @app.route('/clear', methods=['GET', 'POST'])
