@@ -26,6 +26,12 @@ const overlayData = [
 	{ name: 'carinarnica-7', bounds: { north: 45.97760939709851, south: 45.96383797782428, east: 13.65012521215656, west: 13.63032240380932 }}
 ];
 
+const imageBounds = {
+	north:  45.976872,  // maxLat
+	south:  45.900527,  // minLat
+	east:  13.685776,   // maxLng
+	west:  13.575996    // minLng
+};
 
 var border_strings = border.map((item) => {
 	return (item.lat + '|' + item.lon).replace('.', '-')
@@ -50,11 +56,10 @@ const socket = new WebSocket(
 function initMap() {
 	// Define the bounds using the given lat/lng values
 
-
 	// Create a map centered within the bounds
 	map = new google.maps.Map(document.getElementById("map"), {			
 		center: initial_pos,
-		zoom: 17,
+		zoom: 18,
 		zoomControl: false,
 		disableDefaultUI: true,
 		//tilt: 0
@@ -62,18 +67,11 @@ function initMap() {
 
 	// disable zoom control
 	// Set satellite view
-	//map.setMapTypeId('satellite');
-
-	const imageBounds = {
-		north:  45.976872,  // maxLat
-		south:  45.900527,  // minLat
-		east:  13.685776,   // maxLng
-		west:  13.575996    // minLng
-	};
+	map.setMapTypeId('satellite');
 
 
 	const overlay = new google.maps.GroundOverlay('img/nova_gorica-8_2023_blue.png', imageBounds);
-	overlay.setMap(map);
+	//overlay.setMap(map);
 
 	// Initialize Google Maps overlays
 	overlayData.forEach(data => {
@@ -85,7 +83,7 @@ function initMap() {
 		};
 
 		const _overlay = new google.maps.GroundOverlay(`img/small/${data.name}.jpg`, imageBounds);
-		_overlay.setMap(map);
+		//_overlay.setMap(map);
 	});
 
 	// set map height
@@ -94,7 +92,34 @@ function initMap() {
 	setInterval(() => {
 		document.getElementById('map').style=`width: ${window.innerWidth}px; height: ${map_height}px;`
 	}, 100)
+}
 
+const zoomOut = function () {
+	// Define the bounds (e.g., using LatLngBounds).
+	const bounds = new google.maps.LatLngBounds(
+		new google.maps.LatLng(imageBounds.south, imageBounds.west),
+		new google.maps.LatLng(imageBounds.north, imageBounds.east)
+	);
+
+	// Calculate the required zoom and center for these bounds.
+	const mapOptions = {
+		center: bounds.getCenter(),
+		zoom: map.getZoom()
+	};
+
+	// Set map to fit bounds with an animation
+	map.fitBounds(bounds); // Set initial bounds
+	const listener = google.maps.event.addListenerOnce(map, "bounds_changed", function() {
+		mapOptions.zoom = map.getZoom(); // Update zoom to current fitBounds zoom
+		mapOptions.center = map.getCenter(); // Update center to current fitBounds center
+		map.setOptions({
+				// Set transition properties
+				center: mapOptions.center,
+				zoom: mapOptions.zoom
+		});
+	});
+	// Fit the map to the new bounds
+	map.fitBounds(bounds);
 }
 
 var curPointIndex = 0;
@@ -105,6 +130,19 @@ var maxZoom = 20;
 var minZoom = 15;
 
 function setPathPoint(position, index, attempt) {
+	// if position is within bounds 
+	if (position.lat > imageBounds.north || position.lat < imageBounds.south || position.lon > imageBounds.east || position.lon < imageBounds.west) {
+		console.log("out of bounds")
+		if (position.lat == 0 || position.lon == 0) {
+			map.setZoom(10);
+		} else {
+			map.setZoom(15);
+		}
+	} else {
+		console.log("in bounds")
+		map.setZoom(18);
+	}
+	// set map zoom
 	var polyline = latestBorderSection.polyline;
 	var pathCoordinates = latestBorderSection.pathCoordinates;
 	attempt++;
@@ -233,12 +271,18 @@ S(document).ready(function () {
   socket.onmessage = (event) => {
     console.log("onmessage", event.data);
     if (event.data.includes("fail")) {
-      return
+      console.log("fail")
+			latestBorderSection = null
     } 
     if (event.data.includes("detection")) {
       var msg = event.data.split("detection-")[1]
       onSegmentData({data: msg})
     }
+		if (event.data.includes("border")) {
+			var msg = event.data.split("border-")[1]
+			onSegmentData({data})
+			zoomOut()
+		}
   };
 
 	var key_index = 0;
@@ -286,6 +330,7 @@ S(document).ready(function () {
       case 'i': n = 17; break;
       case 'o': n = 18; break;
       case 'p': n = 19; break;
+      case 'z': zoomOut(); break;
       default:
         break;
     }
@@ -320,15 +365,12 @@ S(document).ready(function () {
 		let splitIndex = closest(20, getAllIndexes(string, "|"))
 		string.replace("|", "1")
 		string[splitIndex] = "|"
-		console.log("fixed string", string)
+		//console.log("fixed string", string)
 
-		// get "|" char closest to the middle of the string
-		var middle = Math.floor(string.length / 2);
-		var index = string.indexOf('|', middle);
-		if (index == -1) {
-			index = string.indexOf('|');
+
+		if (string.indexOf('|') == -1) {
+			string[20] = '|'
 		}
-
 
     var data = string.split("|").map((item) => {
       item = item.replace(/^(X+)/g, '')
@@ -389,8 +431,26 @@ S(document).ready(function () {
 			if (latestBorderSection == null) {
 				initializeBorderSection(data)
 			}
-			console.log("borderSections", borderSections)
 			updateBorderLine(data)
+			if (latestBorderSection.pathCoordinates.length == 2 && borderSections.length > 1) {
+				var pathA = borderSections[borderSections.length - 1].pathCoordinates
+				var pathB = borderSections[borderSections.length - 2].pathCoordinates
+
+				var pointA = pathA[0]
+				var pointB = pathB[pathB.length - 1]
+
+				var polyline = new google.maps.Polyline({
+					path: [
+						pointA,
+						pointB
+					],
+					geodesic: true,
+					strokeColor: '#FF0000', // red #FF0000
+					strokeOpacity: 1,
+					strokeWeight: 1
+				});
+				polyline.setMap(map);
+			}
 		} else {
 			latestBorderSection = null
 		}
@@ -432,20 +492,13 @@ S(document).ready(function () {
 	}
 
 	const validateSegment = function (data) {
-		if (Math.random() < 0.1) {
+		// check if .lat and .lon are valid numbers
+		if (isNaN(data.lat) || isNaN(data.lon)) {
 			return false
 		}
-		if (data.lat == 0 || data.lon == 0) {
+		// check if they are valid coordinates
+		if (data.lat > 90 || data.lat < -90 || data.lon > 180 || data.lon < -180) {
 			return false
-		} else {
-			// check if .lat and .lon are valid numbers
-			if (isNaN(data.lat) || isNaN(data.lon)) {
-				return false
-			}
-			// check if they are valid coordinates
-			if (data.lat > 90 || data.lat < -90 || data.lon > 180 || data.lon < -180) {
-				return false
-			}
 		}
 		return true
 	}

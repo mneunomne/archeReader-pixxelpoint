@@ -14,6 +14,8 @@ socketio = SocketIO(app)
 
 video_output = None
 cropped_output = None
+avaraged_output = None
+capture_avarage_frames = False
 
 # make cropped image blank with SEGMENT_OUTPUT_WIDTH and SEGMENT_OUTPUT_HEIGHT with 3 channels using opencv / np
 # cropped_output = np.zeros((SEGMENT_OUTPUT_HEIGHT, SEGMENT_OUTPUT_WIDTH, 3), np.uint8)
@@ -26,6 +28,10 @@ imageProcessor = ImageProcessor()
 def sendVideoOutput(frame):
     global video_output
     video_output = frame
+
+def sendAvaragedOutput(frame):
+		global avaraged_output
+		avaraged_output = frame	
 
 def sendCroppedOutput(frame):
     global cropped_output
@@ -58,6 +64,19 @@ def cropped_image():
     #Video streaming route. Put this in the src attribute of an img tag
     return Response(gen_cropped(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/get_avaraged_frames')
+def get_avaraged_frames():
+    global avaraged_output
+    global capture_avarage_frames
+    capture_avarage_frames = True
+    attempts = 0
+    while avaraged_output is None and attempts < 100:
+      attempts = attempts + 1
+    if avaraged_output is None:
+      return Response('timeout', mimetype='text/plain')
+    else:
+      return Response('done', mimetype='text/plain')
+
 @app.route('/movement_end/<int:direction>')
 def on_movement_end(direction):
     global ready_to_read
@@ -81,8 +100,8 @@ def test(json):
 @app.route('/on_segment/<int:segmentIndex>', methods=['GET', 'POST'])
 def on_segment(segmentIndex):
     print('received segmentIndex', segmentIndex)
-    global video_output
-    if video_output is None:
+    global avaraged_output
+    if avaraged_output is None:
         print('cropped_output is None')
         return Response('fail', mimetype='text/plain')
     else:
@@ -91,12 +110,12 @@ def on_segment(segmentIndex):
         attempts = 0
         while not is_valid and attempts < MAX_ATTEMPTS:
             attempts = attempts + 1
-            is_valid, msg = imageProcessor.process_image(video_output, segmentIndex)
+            is_valid, msg = imageProcessor.process_image(avaraged_output, segmentIndex)
             print('is_valid', is_valid, attempts)
             if is_valid: 
                 attempts = MAX_ATTEMPTS
         if is_valid:
-            print('is_valid', is_valid)
+            print('msg', msg)
             return Response(msg, mimetype='text/plain')
         else:
             print('not valid', is_valid)
