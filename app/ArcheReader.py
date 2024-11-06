@@ -190,7 +190,7 @@ class ArcheReader:
 			# output_image[:, :, 2] = cv2.addWeighted(output_image[:, :, 2], 1.90, np.zeros(output_image[:, :, 2].shape, output_image[:, :, 2].dtype), 0, 0)
 			
 			# increase contrast
-			output_image = cv2.convertScaleAbs(output_image, alpha=0.79, beta=1)
+			output_image = cv2.convertScaleAbs(output_image, alpha=0.68, beta=1)
 
 			video_output = output_image.copy()
 	 

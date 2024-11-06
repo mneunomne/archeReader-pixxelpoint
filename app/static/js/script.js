@@ -172,7 +172,7 @@ function tryPathPoint(position, index, attempt) {
 	if (attempt < numAttempts) {
 		setTimeout(() => {
 			tryPathPoint(position, index, attempt);
-		}, 25000/numAttempts);
+		}, 5000/numAttempts);
 	}
 }
 
@@ -294,7 +294,30 @@ S(document).ready(function () {
 			if (index >= 35 && index <= 38) {
 				displayPosition(border[index])
 			} else {
-				latestBorderSection = null
+				console.log("borderSections", borderSections)
+				if (borderSections.length > 0) {
+					var position = border[index]
+					var latlng = new google.maps.LatLng(position.lat, position.lon);
+					var pathB = borderSections[borderSections.length - 1].pathCoordinates
+					var pointA = latlng
+					var pointB = pathB[pathB.length - 1]
+	
+					var polyline = new google.maps.Polyline({
+						path: [
+							pointA,
+							pointB
+						],
+						geodesic: true,
+						strokeColor: '#FF0000', // red #FF0000
+						strokeOpacity: 1,
+						strokeWeight: 2
+					});
+					polyline.setMap(map);
+					// pan
+					smoothPanTo(position);
+				} else {
+					latestBorderSection = null
+				}
 			}
     } 
     if (event.data.includes("detection")) {
@@ -391,16 +414,18 @@ S(document).ready(function () {
 	// decode function
   var decode = function (string) {
 
-		let splitIndex = closest(20, getAllIndexes(string, "|"))
-		string.replace("|", "1")
-		string[splitIndex] = "|"
+		//let splitIndex = closest(20, getAllIndexes(string, "|"))
+		string.replace(/|/g, "1")
+		string[20] = "|"
 		//console.log("fixed string", string)
 
 
-		if (string.indexOf('|') == -1) {
-			string[20] = '|'
-		}
-
+		
+    hideMessage()
+    setTimeout(() => {
+      displayMessage(string)
+    }, transition_duration)
+		
     var data = string.split("|").map((item) => {
       item = item.replace(/^(X+)/g, '')
       item = item.replace('-', '.')
@@ -470,7 +495,7 @@ S(document).ready(function () {
 					geodesic: true,
 					strokeColor: '#FF0000', // red #FF0000
 					strokeOpacity: 1,
-					strokeWeight: 1
+					strokeWeight: 2
 				});
 				polyline.setMap(map);
 			}
@@ -489,8 +514,8 @@ S(document).ready(function () {
 		if (ref_data !== undefined) {
 			let lat_diff = data.lat - ref_data.lat
 			let lon_diff = data.lon - ref_data.lon
-			data.lat = (ref_data.lat + (lat_diff*Math.random()))
-			data.lon = (ref_data.lon + (lon_diff*Math.random()))
+			//data.lat = (ref_data.lat + (lat_diff*Math.random()))
+			//data.lon = (ref_data.lon + (lon_diff*Math.random()))
 
 			let ref_lat_s = (ref_data.lat + '').padEnd(20, '0')
 			let ref_lon_s = (ref_data.lon + '').padEnd(20, '0')
@@ -505,13 +530,6 @@ S(document).ready(function () {
 		}
 
 		displayPosition(data)
-	
-		
-    hideMessage()
-    setTimeout(() => {
-      displayMessage(string)
-    }, transition_duration)
-		
   }
 
 	const initializeBorderSection = function (position) {
