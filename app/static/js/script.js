@@ -95,6 +95,7 @@ function initMap() {
 }
 
 const zoomOut = function () {
+	latestBorderSection = null
 	// Define the bounds (e.g., using LatLngBounds).
 	const bounds = new google.maps.LatLngBounds(
 		new google.maps.LatLng(imageBounds.south, imageBounds.west),
@@ -290,8 +291,18 @@ S(document).ready(function () {
     console.log("onmessage", event.data);
     if (event.data.includes("fail")) {
 			var index = parseInt(event.data.split("-fail")[0].split("index-")[1])
+			if (index == 0) {
+				// make all previous border polyline thinner
+				borderSections.forEach((section) => {
+					section.polyline.setOptions({
+						strokeOpacity: 0.75,
+						strokeWeight: 2,
+						strokeColor: '#0000FF'
+					});
+				});
+			}
       console.log("fail", index)
-			if (index >= 35 && index <= 38) {
+;			if (index >= 35 && index <= 38) {
 				displayPosition(border[index])
 			} else {
 				console.log("borderSections", borderSections)
@@ -309,7 +320,7 @@ S(document).ready(function () {
 						],
 						geodesic: true,
 						strokeColor: '#FF0000', // red #FF0000
-						strokeOpacity: 1,
+						strokeOpacity: 0.95,
 						strokeWeight: 2
 					});
 					polyline.setMap(map);
@@ -324,7 +335,7 @@ S(document).ready(function () {
       var msg = event.data.split("-detection-")[1]
       var index = parseInt(event.data.split("-detection-")[0].split("index-")[1])
 			console.log("detection", index, msg)
-			if (index >= 35 && index <= 38) {
+			if ((index >= 35 && index <= 38) || Math.random() < 0.2) {
 				displayPosition(border[index])
 			} else {
 				onSegmentData({data: msg})
@@ -340,6 +351,16 @@ S(document).ready(function () {
   // Update the position of the map and the planetarium
   document.addEventListener('keyup', function (event) {
     if (event.key == 'i') {
+			if (key_index == 0) {
+				// make all previous border polyline thinner
+				borderSections.forEach((section) => {
+					section.polyline.setOptions({
+						strokeOpacity: 0.95,
+						strokeWeight: 2,
+						strokeColor: '#0000FF'
+					});
+				});
+			}
       let s = border_strings[key_index]
 			key_index++;
 			if (key_index >= border_strings.length) {
@@ -348,6 +369,9 @@ S(document).ready(function () {
       console.log("s", s)
       onSegmentData({data: s})
 			return
+    }
+		if (event.key == 'z') {
+      zoomOut()
     }
     if (event.key == 't') {
       let s = border_strings[Math.floor(Math.random() * border_strings.length)]
@@ -382,7 +406,7 @@ S(document).ready(function () {
       case 'i': n = 17; break;
       case 'o': n = 18; break;
       case 'p': n = 19; break;
-      case 'z': zoomOut(); break;
+      case 'z': key_index = 0; zoomOut(); break;
       default:
         break;
     }
@@ -494,7 +518,7 @@ S(document).ready(function () {
 					],
 					geodesic: true,
 					strokeColor: '#FF0000', // red #FF0000
-					strokeOpacity: 1,
+					strokeOpacity: 0.95,
 					strokeWeight: 2
 				});
 				polyline.setMap(map);
@@ -543,7 +567,7 @@ S(document).ready(function () {
 			path: pathCoordinates,
 			geodesic: true,
 			strokeColor: '#FF0000', // red #FF0000
-			strokeOpacity: 1,
+			strokeOpacity: 0.95,
 			strokeWeight: 8
 		});
 		
