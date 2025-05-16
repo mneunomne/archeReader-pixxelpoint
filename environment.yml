@@ -1,4 +1,4 @@
-name: archeReading
+name: archeReader
 channels:
   - defaults
 dependencies:
